@@ -1,0 +1,89 @@
+SELECT
+  *
+FROM
+  "TSHEGO_DB"."BRIGHT_TV"."PROFILES"
+LIMIT
+  10;
+
+
+  SELECT
+  *
+FROM
+  "TSHEGO_DB"."BRIGHT_TV"."VIEWERSHIP"
+LIMIT
+  10;
+
+SELECT 
+    A.USERID AS registered_subscribers,
+    A.AGE,
+    A.PROVINCE,
+    B.USERID AS active_subscribers,
+    B.CHANNEL2 AS tv_channel,
+    B.DURATION_2 AS view_duration,
+
+    ------Aggregation-----
+    COUNT(DISTINCT A.USERID) AS total_subscribers,
+    COUNT(DISTINCT B.USERID) AS total_active_subscribers,
+    COUNT(B.USERID) AS total_susbcriber_views,
+    COUNT(DISTINCT B.CHANNEL2) AS number_of_channels,
+    COUNT(B.CHANNEL2) AS views_per_channel,
+    IFNULL(TO_TIME(B.DURATION_2), '00:00:00') AS inactive_subscribers,
+
+    -------------Date Function--------------  
+    CONVERT_TIMEZONE('UTC', 'Africa/Johannesburg', TRY_TO_TIMESTAMP(B.RECORDDATE2, 'MM/DD/YYYY HH24:MI')) AS sa_record_date,
+    DAYNAME(TRY_TO_TIMESTAMP(B.RECORDDATE2, 'MM/DD/YYYY HH24:MI')) AS day_name,
+    MONTHNAME(TRY_TO_TIMESTAMP(B.RECORDDATE2, 'MM/DD/YYYY HH24:MI')) AS month_name,
+    TO_CHAR(TRY_TO_TIMESTAMP(B.RECORDDATE2, 'MM/DD/YYYY HH24:MI'),'YYYY-MM') AS month_id,
+    YEAR(TRY_TO_TIMESTAMP(B.RECORDDATE2, 'MM/DD/YYYY HH24:MI')) AS year,
+
+    -------------Extract Hours--------------
+    CASE 
+        WHEN EXTRACT(HOUR FROM TRY_TO_TIMESTAMP(B.RECORDDATE2, 'MM/DD/YYYY HH24:MI')) BETWEEN 5 AND 11 THEN 'Morning'
+        WHEN EXTRACT(HOUR FROM TRY_TO_TIMESTAMP(B.RECORDDATE2, 'MM/DD/YYYY HH24:MI')) BETWEEN 12 AND 16 THEN 'Afternoon'
+        WHEN EXTRACT(HOUR FROM TRY_TO_TIMESTAMP(B.RECORDDATE2, 'MM/DD/YYYY HH24:MI')) BETWEEN 17 AND 20 THEN 'Evening'
+        ELSE 'Night'
+    END AS time_of_day,
+
+    -------------Age Group--------------
+    CASE
+        WHEN A.AGE BETWEEN 0 AND 12 THEN 'Kids'
+        WHEN A.AGE BETWEEN 13 AND 17 THEN 'Teens'
+        WHEN A.AGE BETWEEN 18 AND 30 THEN 'Youth'
+        WHEN A.AGE BETWEEN 31 AND 40 THEN 'Adult'
+        WHEN A.AGE BETWEEN 41 AND 64 THEN 'Senior'
+        ELSE 'Elder'
+    END AS age_group,
+
+    -------------Ethnicity--------------
+    CASE
+        WHEN A.RACE = 'black' THEN 'Black'
+        WHEN A.RACE = 'white' THEN 'White'
+        WHEN A.RACE = 'coloured' THEN 'Coloured'
+        WHEN A.RACE = 'indian_asian' THEN 'Indian'
+        ELSE 'Not Specified'
+    END AS ethnicity,
+
+    -------------Gender-------------
+    CASE
+        WHEN A.GENDER = 'male' THEN 'Male'
+        WHEN A.GENDER = 'female' THEN 'Female'
+        ELSE 'Unknown'
+    END AS gender,
+
+    -------------View category--------------
+    CASE 
+        WHEN B.DURATION_2 BETWEEN '00:00:01' AND '00:10:00' THEN '<10min: Quick Glimpse'
+        WHEN B.DURATION_2 BETWEEN '00:11:00' AND '00:30:00' THEN '11-30min: Short View'
+        WHEN B.DURATION_2 BETWEEN '00:31:00' AND '00:59:59' THEN '31-60min: Standard Episode'
+        WHEN B.DURATION_2 BETWEEN '01:00:00' AND '01:59:59' THEN '61-120min: Extended Viewing'
+        ELSE '>121min: Binge Session'
+    END AS view_category
+
+FROM 
+    "TSHEGO_DB"."BRIGHT_TV"."PROFILES" A
+INNER JOIN 
+    "TSHEGO_DB"."BRIGHT_TV"."VIEWERSHIP" B
+ON 
+    A.USERID = B.USERID
+GROUP BY 
+    ALL;
